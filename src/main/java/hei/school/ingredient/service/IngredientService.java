@@ -1,12 +1,13 @@
 package hei.school.ingredient.service;
 
 import hei.school.ingredient.entity.*;
+import hei.school.ingredient.exception.NotFoundException;
 import hei.school.ingredient.repository.IngredientRepository;
 import org.springframework.stereotype.Service;
+
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class IngredientService {
@@ -21,17 +22,15 @@ public class IngredientService {
         return ingredientRepository.findAll();
     }
 
-    public Optional<Ingredient> getIngredientById(Integer id) throws SQLException {
-        return ingredientRepository.findById(id);
+    public Ingredient getIngredientById(Integer id) throws SQLException {
+        return ingredientRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Ingredient.id=" + id + " not found"));
     }
 
     public StockValue getStockValueAt(Integer ingredientId, Instant at, Unit unit) throws SQLException {
-        Optional<Ingredient> ingredientOpt = ingredientRepository.findById(ingredientId);
-        if (ingredientOpt.isEmpty()) {
-            return null;
-        }
+        Ingredient ingredient = ingredientRepository.findById(ingredientId)
+                .orElseThrow(() -> new NotFoundException("Ingredient.id=" + ingredientId + " not found"));
 
-        Ingredient ingredient = ingredientOpt.get();
         if (ingredient.getStockMovementList() == null || ingredient.getStockMovementList().isEmpty()) {
             StockValue sv = new StockValue();
             sv.setQuantity(0.0);
@@ -39,20 +38,13 @@ public class IngredientService {
             return sv;
         }
 
-        // Filter by unit and calculate stock at given time
-        List<StockMovement> filteredMovements = ingredient.getStockMovementList().stream()
+        double sum = ingredient.getStockMovementList().stream()
                 .filter(sm -> sm.getValue().getUnit() == unit)
                 .filter(sm -> !sm.getCreationDatetime().isAfter(at))
-                .toList();
-
-        double sum = 0;
-        for (StockMovement sm : filteredMovements) {
-            if (sm.getType() == MovementTypeEnum.IN) {
-                sum += sm.getValue().getQuantity();
-            } else {
-                sum -= sm.getValue().getQuantity();
-            }
-        }
+                .mapToDouble(sm -> sm.getType() == MovementTypeEnum.IN
+                        ? sm.getValue().getQuantity()
+                        : -sm.getValue().getQuantity())
+                .sum();
 
         StockValue result = new StockValue();
         result.setQuantity(sum);
