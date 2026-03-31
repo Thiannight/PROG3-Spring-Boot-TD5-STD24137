@@ -39,4 +39,26 @@ public class IngredientController {
 
         return ingredientService.getStockValueAt(id, instant, unitEnum);
     }
+
+    // f) GET /ingredients/{id}/stockMovements?from={from}&to={to}
+    @GetMapping("/{id}/stockMovements")
+    public List<StockMovement> getStockMovements(
+            @PathVariable Integer id,
+            @RequestParam String from,
+            @RequestParam String to) throws SQLException {
+
+        Instant fromInstant = Instant.parse(from);
+        Instant toInstant = Instant.parse(to);
+
+        return ingredientService.getStockMovementsBetween(id, fromInstant, toInstant);
+    }
+
+    // g) POST /ingredients/{id}/stockMovements
+    @PostMapping("/{id}/stockMovements")
+    public List<StockMovement> addStockMovements(
+            @PathVariable Integer id,
+            @RequestBody List<StockMovementRequest> requests) throws SQLException {
+
+        return ingredientService.addStockMovements(id, requests);
+    }
 }

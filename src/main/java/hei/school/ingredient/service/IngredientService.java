@@ -24,12 +24,12 @@ public class IngredientService {
 
     public Ingredient getIngredientById(Integer id) throws SQLException {
         return ingredientRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Ingredient.id=" + id + " not found"));
+                .orElseThrow(() -> new NotFoundException("Ingredient.id=" + id + " is not found"));
     }
 
     public StockValue getStockValueAt(Integer ingredientId, Instant at, Unit unit) throws SQLException {
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
-                .orElseThrow(() -> new NotFoundException("Ingredient.id=" + ingredientId + " not found"));
+                .orElseThrow(() -> new NotFoundException("Ingredient.id=" + ingredientId + " is not found"));
 
         if (ingredient.getStockMovementList() == null || ingredient.getStockMovementList().isEmpty()) {
             StockValue sv = new StockValue();
@@ -50,5 +50,25 @@ public class IngredientService {
         result.setQuantity(sum);
         result.setUnit(unit);
         return result;
+    }
+
+    // f) Get stock movements filtered by date range
+    public List<StockMovement> getStockMovementsBetween(
+            Integer ingredientId, Instant from, Instant to) throws SQLException {
+
+        ingredientRepository.findById(ingredientId)
+                .orElseThrow(() -> new NotFoundException("Ingredient.id=" + ingredientId + " is not found"));
+
+        return ingredientRepository.findStockMovementsByIngredientIdBetween(ingredientId, from, to);
+    }
+
+    // g) Add stock movements to an ingredient
+    public List<StockMovement> addStockMovements(
+            Integer ingredientId, List<StockMovementRequest> requests) throws SQLException {
+
+        ingredientRepository.findById(ingredientId)
+                .orElseThrow(() -> new NotFoundException("Ingredient.id=" + ingredientId + " is not found"));
+
+        return ingredientRepository.saveStockMovements(ingredientId, requests);
     }
 }

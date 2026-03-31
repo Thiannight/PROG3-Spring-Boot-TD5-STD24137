@@ -1,5 +1,7 @@
 package hei.school.ingredient.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +37,7 @@ public class Dish {
         this.price = price;
     }
 
+    @JsonIgnore
     public Double getDishCost() {
         double totalPrice = 0;
         for (DishIngredient dishIngredient : dishIngredients) {
@@ -71,6 +74,7 @@ public class Dish {
         this.dishType = dishType;
     }
 
+    @JsonIgnore
     public Double getGrossMargin() {
         if (price == null) {
             throw new RuntimeException("Price is null");

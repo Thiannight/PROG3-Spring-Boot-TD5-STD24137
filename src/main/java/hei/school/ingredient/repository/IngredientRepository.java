@@ -60,20 +60,69 @@ public class IngredientRepository {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                StockMovement sm = new StockMovement();
-                sm.setId(rs.getInt("id"));
-                sm.setType(MovementTypeEnum.valueOf(rs.getString("type")));
-                sm.setCreationDatetime(rs.getTimestamp("creation_datetime").toInstant());
-
-                StockValue sv = new StockValue();
-                sv.setQuantity(rs.getDouble("quantity"));
-                sv.setUnit(Unit.valueOf(rs.getString("unit")));
-                sm.setValue(sv);
-
-                stockMovements.add(sm);
+                stockMovements.add(mapStockMovement(rs));
             }
         }
         return stockMovements;
+    }
+
+    // f) Filter stock movements by date range
+    public List<StockMovement> findStockMovementsByIngredientIdBetween(
+            Integer ingredientId, Instant from, Instant to) throws SQLException {
+
+        List<StockMovement> stockMovements = new ArrayList<>();
+        String sql = """
+            SELECT id, quantity, unit, type, creation_datetime
+            FROM stock_movement
+            WHERE id_ingredient = ?
+              AND creation_datetime >= ?
+              AND creation_datetime <= ?
+            ORDER BY creation_datetime
+        """;
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, ingredientId);
+            stmt.setTimestamp(2, Timestamp.from(from));
+            stmt.setTimestamp(3, Timestamp.from(to));
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                stockMovements.add(mapStockMovement(rs));
+            }
+        }
+        return stockMovements;
+    }
+
+    // g) Insert a list of stock movements for a given ingredient
+    public List<StockMovement> saveStockMovements(
+            Integer ingredientId, List<StockMovementRequest> requests) throws SQLException {
+
+        String sql = """
+            INSERT INTO stock_movement (id_ingredient, quantity, unit, type, creation_datetime)
+            VALUES (?, ?, ?::unit_type, ?::mouvement_type, NOW())
+            RETURNING id, quantity, unit, type, creation_datetime
+        """;
+
+        List<StockMovement> created = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            for (StockMovementRequest req : requests) {
+                stmt.setInt(1, ingredientId);
+                stmt.setDouble(2, req.getQuantity());
+                stmt.setString(3, req.getUnit().name());
+                stmt.setString(4, req.getType().name());
+
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    created.add(mapStockMovement(rs));
+                }
+            }
+        }
+        return created;
     }
 
     public StockValue getStockValueAt(Instant t, Integer ingredientId) throws SQLException {
@@ -105,6 +154,20 @@ public class IngredientRepository {
             }
             return null;
         }
+    }
+
+    private StockMovement mapStockMovement(ResultSet rs) throws SQLException {
+        StockMovement sm = new StockMovement();
+        sm.setId(rs.getInt("id"));
+        sm.setType(MovementTypeEnum.valueOf(rs.getString("type")));
+        sm.setCreationDatetime(rs.getTimestamp("creation_datetime").toInstant());
+
+        StockValue sv = new StockValue();
+        sv.setQuantity(rs.getDouble("quantity"));
+        sv.setUnit(Unit.valueOf(rs.getString("unit")));
+        sm.setValue(sv);
+
+        return sm;
     }
 
     private Ingredient mapIngredient(ResultSet rs) throws SQLException {

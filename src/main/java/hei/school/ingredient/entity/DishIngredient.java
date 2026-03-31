@@ -1,6 +1,9 @@
 package hei.school.ingredient.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class DishIngredient {
+    @JsonIgnore
     private Dish dish;
     private Ingredient ingredient;
     private Double quantity;
