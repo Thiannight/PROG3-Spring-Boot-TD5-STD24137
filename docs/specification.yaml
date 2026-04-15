@@ -1,0 +1,266 @@
+openapi: 3.0.3
+info:
+  title: Ingredient & Dish API
+  description: API REST de gestion des ingrédients et des plats — PROG3 Spring-boot
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+
+paths:
+
+  /ingredients:
+    get:
+      summary: Récupérer la liste de tous les ingrédients
+      operationId: getAllIngredients
+      responses:
+        '200':
+          description: Liste des ingrédients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ingredient'
+
+  /ingredients/{id}:
+    get:
+      summary: Récupérer un ingrédient par son identifiant
+      operationId: getIngredientById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Ingrédient trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+        '404':
+          description: Ingrédient non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: "2026-03-31T08:00:00Z"
+                error: "Ingredient.id=99 is not found"
+
+  /ingredients/{id}/stock:
+    get:
+      summary: Récupérer la valeur du stock d'un ingrédient à un instant donné
+      operationId: getStockValueAt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: at
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Instant auquel calculer la valeur du stock (format ISO-8601)
+        - name: unit
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/Unit'
+          description: Unité dans laquelle exprimer la valeur du stock
+      responses:
+        '200':
+          description: Valeur du stock à l'instant demandé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockValue'
+        '404':
+          description: Ingrédient non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: "2026-03-31T08:00:00Z"
+                error: "Ingredient.id=99 is not found"
+
+  /dishes:
+    get:
+      summary: Récupérer la liste de tous les plats
+      operationId: getAllDishes
+      responses:
+        '200':
+          description: Liste des plats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dish'
+
+  /dishes/{id}/ingredients:
+    put:
+      summary: Mettre à jour la liste des ingrédients d'un plat
+      operationId: updateDishIngredients
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/DishIngredient'
+      responses:
+        '200':
+          description: Plat mis à jour avec ses nouveaux ingrédients
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+        '400':
+          description: Requête invalide (liste vide, ingrédient ou quantité manquant, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Plat ou ingrédient non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: "2026-03-31T08:00:00Z"
+                error: "Dish.id=99 not found"
+
+components:
+  schemas:
+
+    Unit:
+      type: string
+      enum:
+        - PCS
+        - KG
+        - L
+
+    MovementType:
+      type: string
+      enum:
+        - IN
+        - OUT
+
+    CategoryEnum:
+      type: string
+      enum:
+        - VEGETABLE
+        - ANIMAL
+        - MARINE
+        - DAIRY
+        - OTHER
+
+    DishType:
+      type: string
+      enum:
+        - START
+        - MAIN
+        - DESSERT
+
+    StockValue:
+      type: object
+      properties:
+        quantity:
+          type: number
+          format: double
+          description: Quantité en stock
+        unit:
+          $ref: '#/components/schemas/Unit'
+
+    StockMovement:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Identifiant du mouvement de stock
+        creationDatetime:
+          type: string
+          format: date-time
+          description: Date et heure de création du mouvement (format ISO-8601)
+        value:
+          $ref: '#/components/schemas/StockValue'
+        type:
+          $ref: '#/components/schemas/MovementType'
+
+    Ingredient:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Identifiant de l'ingrédient
+        name:
+          type: string
+          description: Nom de l'ingrédient
+        price:
+          type: number
+          format: double
+          description: Prix unitaire de l'ingrédient
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        stockMovementList:
+          type: array
+          items:
+            $ref: '#/components/schemas/StockMovement'
+
+    DishIngredient:
+      type: object
+      properties:
+        ingredient:
+          $ref: '#/components/schemas/Ingredient'
+        quantity:
+          type: number
+          format: double
+          description: Quantité requise de l'ingrédient pour le plat
+        unit:
+          $ref: '#/components/schemas/Unit'
+
+    Dish:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Identifiant du plat
+        name:
+          type: string
+          description: Nom du plat
+        price:
+          type: number
+          format: double
+          description: Prix de vente du plat (peut être nul)
+        dishType:
+          $ref: '#/components/schemas/DishType'
+        dishIngredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/DishIngredient'
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Date/heure de l'erreur
+        error:
+          type: string
+          description: Message d'erreur
